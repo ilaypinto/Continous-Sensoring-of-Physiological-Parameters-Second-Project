@@ -1,29 +1,47 @@
 function all_data = extract_data(files_filepath, data_filepath, flag_load)
+% this function reads xlsx files and return them as a data structure.
+% inputs:
+%       - files_filepath: the relative path to the xlsx files
+%       - data_filepath: the relative path to where you want to save the
+%                        extracted data
+%       - flag_load: specifies if you want to load a mat file as the data
+%                    (1) structure or extract data from xlsx files (0)
+%
+% outputs:
+%       - all_data: a cell containing the data structures. each cell is a
+%                   structure containing the data of a single person. the
+%                   fields of each structure are structures that contains
+%                   data relative to this person in every day of recording.
+%                   the data is stored as a table obj.
 
 
+% things to add:
+%       - data from our daily form xlsx files 
+%       - description of sepecific code lines
 
+
+% load condition
 if flag_load
     all_data = load(strcat(data_filepath,'/','all_data.mat'));
     all_data = all_data.all_data;
     return
 end
 
-listing = dir(files_filepath);                          % get files info
+listing = dir(files_filepath);  % get files info
 
-all_data = cell(length(listing),1);
+all_data = cell(length(listing),1); % alocate space in memory 
 
 
 for i = 3:length(listing) - 1
     name = listing(i).name;                                 % name of the file
     data = readtable(strcat(files_filepath, '/', name));    % read the xlsx file
-%     headers = data.Properties.VariableNames;                % get table headers
-    func = @(x) datestr(x);
-    dates = varfun(func,unique(data(:,5)));                     % get the recorded dates
-    curr_struct = struct('uid', data(1,2));
+%     headers = data.Properties.VariableNames;              % get table headers
+    dates = unique(data(:,5));                              % get the recorded dates
+    curr_struct = struct('uid', data(1,2));                 % create a new structure
     for j = 1:size(dates,1)
-        temp_data = data(data{:,5} == datetime(dates{j,1}),:);
-        temp_data = sortrows(temp_data,6);   % sort the data by time of the day
-        type = temp_data{:, 7};  % sensors names column
+        temp_data = data(data{:,5} == dates{j,1},:);        % talbe data that maches the current date
+        temp_data = sortrows(temp_data,6);                  % sort the data by time of the day
+        type = temp_data{:, 7};                             % sensors names column
 
         % extract the relevant data from the table
         wifi = temp_data(strcmp(type,'wireless'), [6 8 9]);
@@ -51,6 +69,6 @@ for i = 3:length(listing) - 1
     end
     all_data{i - 2,1} = curr_struct;
 end
-all_data = all_data(~cellfun('isempty',all_data));
-save(strcat(data_filepath,'/','all_data'), 'all_data');
+all_data = all_data(~cellfun('isempty',all_data));      % remove empty cells
+save(strcat(data_filepath,'/','all_data'), 'all_data'); % save the data as a mat file
 end
