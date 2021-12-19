@@ -1,3 +1,4 @@
+clc; clear all; close all;
 % this is the main script for our workflow
 
 % set some usefull flags
