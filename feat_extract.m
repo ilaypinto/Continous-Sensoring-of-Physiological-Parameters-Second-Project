@@ -1,7 +1,7 @@
 function feat_mat = feat_extract(all_data,day_vec)
-% ####### insert function description here #######
-
-
+% This function does the same old fucking thing- extracting features
+% Nothing new, just another fuckery. % now after we had our laugh, description in the next line
+% This function extracts features using data from 'extract_data' function and using the day names as described in the field of the structures gotten from said function.
 struct = all_data{1};
 feat_mat=[];
 for j = 1:length(day_vec)
@@ -32,11 +32,13 @@ for j = 1:length(day_vec)
             else
                 if strcmp(struct.(day_vec(j)).screen(i+1,2),'on')
                     on_off_switches = on_off_switches+1;        % ######## should remain the same ########
-                end
+                end                                             % ^^^line 28 - if it says 'on' and the next one 'off' then add one^^^
+                                                                % ^^^line 33 - if it says 'off' and the next one 'on' then add one^^^
             end
         end
         
         % ######## i think we need to find better features to extract from the battery data #########
+        % ^^^ Idk Dude^^^
         battery_start = str2double(...
             struct.(day_vec(j)).battery(1,2));                    % battery % at start of the day
         battery_end = str2double(...
@@ -54,39 +56,27 @@ for j = 1:length(day_vec)
             end
         end
 
-        calls_num = size(struct.(day_vec(j)).battery,1);   % number of calls in a day  ###### battery field instead of calls #######
+        calls_num = size(struct.(day_vec(j)).calls,1);   % number of calls in a day  
         calls_sum = sum(str2double(struct.(day_vec(j)...
-            ).battery(:,2)));                              % sum of sec on the phone per day  ###### battery field instead of calls #######
-        [M,I] = max(str2double(struct.(day_vec(j)).battery(:,2)));      % ###### battery field instead of calls #######
+            ).calls(:,2)));                              % sum of sec on the phone per day  
+        [M,I] = max(str2double(struct.(day_vec(j)).calls(:,2)));     
         calls_max = M;                                     % longest call(in sec)
-        calls_max_time = struct.(day_vec(j)).battery(I-1); % time of longest call ###### battery field instead of calls #######
+        calls_max_time = struct.(day_vec(j)).calls(I-1); % time of longest call 
         
-        if sum(strcmp(struct.(...
-                day_vec(j)).activity(:,3),'IN_VEHICLE'))~=0 % were you in a vehicle or not
-            in_vehicle = 1; % ##### how many times u were in a vehicle is also a good feature #####
-        else
-            in_vehicle = 0;
-        end
+        in_vehicle= sum(strcmp(struct.(...
+                day_vec(j)).activity(:,3),'IN_VEHICLE')); % times a day in vehicle
+   
+        on_foot= sum(strcmp(struct.(...
+                day_vec(j)).activity(:,3),'ON_FOOT'));    % times a day on foot
         
-        if sum(strcmp(struct.(...
-                day_vec(j)).activity(:,3),'ON_FOOT'))~=0    % were you on foot or not
-            on_foot = 1; % ##### how many times u were on foot is also a good feature #####
-        else             % ##### this would probably be 1 all the time since walking is very common ######
-            on_foot = 0;
-        end
-        
-        if sum(strcmp(struct.(...
-                day_vec(j)).activity(:,3),'TILTING'))~=0    % were you tilting or not ##### how many times u were on foot is also a good feature #####
-            tilting = 1;  % ##### this would probably be 1 all the time since tilting is very common ######
-        else
-            tilting = 0;
-        end
+        tilting= sum(strcmp(struct.(...
+                day_vec(j)).activity(:,3),'TILTING'));    % times a day tilting
         
         location_sum = sum(str2double(...
             struct.(day_vec(j)).location(:,2))); % sum of movement in a day
-        [M,I] = max(str2double(struct.(day_vec(j)).activity(:,3)));     % ##### activity field? should be location IMO #####
+        [M,I] = max(str2double(struct.(day_vec(j)).location(:,3)));    
         location_max = M;                      % max movement
-        location_max_time = struct.(day_vec(j)).activity(I-1); % max movement time   ##### activity field? should be location IMO #####
+        location_max_time = struct.(day_vec(j)).location(I-1); % max movement time   
 
     feat_vec = [wireless_sum bluetooth_sum on_off_switches battery_start...
         battery_mid battery_end first_charge_time calls_num calls_sum...
