@@ -126,10 +126,12 @@ for j = 2:length(fields)
         location_max_time = nan;
     end
 
+
     feat_vec = [wireless_sum bluetooth_sum on_off_switches battery_start...
     battery_mid battery_end first_charge_time calls_num calls_sum...
     calls_max calls_max_time in_vehicle on_foot tilting location_sum...
     location_max location_max_time label];
+
 
     feat_mat = cat(1,feat_mat,feat_vec);
 end
