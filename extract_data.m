@@ -33,9 +33,9 @@ listing = dir(files_filepath);  % get files info
 all_data = cell(length(listing),1); % alocate space in memory 
 
 
-for i = 3:length(listing) - 1
+for i = 3:length(listing)
     name = listing(i).name;                                 % name of the file
-    if name(1) == 'l' || name(1) == 'L'
+    if name(1) == 'l' || name(1) == 'L' || strcmp(name,'desktop.ini')
         continue
     end
     data = readtable(strcat(files_filepath, '/', name));    % read the xlsx file
