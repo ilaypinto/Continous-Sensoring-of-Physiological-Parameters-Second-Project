@@ -2,6 +2,7 @@ function feat_mat = feat_extract(all_data,day_vec)
 % This function does the same old fucking thing- extracting features
 % Nothing new, just another fuckery. % now after we had our laugh, description in the next line
 % This function extracts features using data from 'extract_data' function and using the day names as described in the field of the structures gotten from said function.
+
 struct = all_data{1};
 feat_mat=[];
 for j = 1:length(day_vec)
