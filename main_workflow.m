@@ -15,6 +15,9 @@ mat_filepath = 'mat files';
 
 
 all_data = extract_data(files_filepath, mat_filepath, flag_load_data);
+featuers = feat_extract(all_data{1}, 1);
+
+
 %%
 train_set_data = all_data(1,1:round(0.8*length(all_data)));
 test_set_data = all_data(1,round(0.8*length(all_data)):end);
@@ -23,5 +26,11 @@ train_set_feat = feat_extract(train_set_data);
 test_set_feat = feat_extract(test_set_data);
 
 
-
-
+%%
+names = fieldnames(all_data{1});
+for i = 2:length(fieldnames(all_data{1}))
+    a(i) = size(all_data{1}.(names{i}).light,1);
+    b(i) = size(all_data{1}.(names{i}).battery,1);
+end
+a
+b

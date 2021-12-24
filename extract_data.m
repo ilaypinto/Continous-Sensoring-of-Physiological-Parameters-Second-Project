@@ -60,6 +60,8 @@ for i = 3:length(listing)
         battery = temp_data(strcmp(type,'battery'), [6 9 10 11]);
         activity = temp_data(strcmp(type,'activity_recognition'), [6 10 11]);
         screen = temp_data(strcmp(type,'screenstate'), [6 9]);
+        acc = temp_data(strcmp(type,'acelerometer'), [6 12 13 14]);
+
         if ~isempty(temp_data_label)
             sleep_time = temp_data_label{1,2};
             wake_time = temp_data_label{1,3};
@@ -82,6 +84,7 @@ for i = 3:length(listing)
         curr_struct.(field_name).battery = battery;
         curr_struct.(field_name).activity = activity;
         curr_struct.(field_name).screen = screen;
+        curr_struct.(field_name).acc = acc;
         curr_struct.(field_name).sleep_time = sleep_time;
         curr_struct.(field_name).wake_time = wake_time;
         curr_struct.(field_name).load = load;
