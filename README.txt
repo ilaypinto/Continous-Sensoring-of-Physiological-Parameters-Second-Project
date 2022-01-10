@@ -27,11 +27,20 @@ Helper Functions:
 1) 'extract_data' extracts the data from the xlsx files, to a comfortable data set.
 2) 'feat_extract_norm' extracts features from the dataset, which need a normalization process.
 3) 'feat_extract_unnorm' extracts features from the dataset, which don't need a normalization process.
-4) 'feat_set' creates a unifind dataset of both normed and not normed features.
+4) 'feat_set' creates a unified dataset of both normed and not normed features.
 5) 'corr_analysis' computes feature-feature correlations, 
-    then adds a relieff process, to choose the best features. Moreover, it removes features which had over 15% Nan values.
+    then adds a relieff process, to remove redundant features. Moreover, it removes features which had over 15% Nan values.
 6) 'main_workflow' was the main code which was used to test all functions and data. from this code,
     Only the relevant parts of the processs were added to the 'main' function. This code was added to show our
     work stages and logic. Both behaviors in PPV and Sensitivity of 90% can be seen in this code.
 
+how to work with the code:
+
+in the 'main_workflow' change the flags as you wish, each flag has its own explanation in the same code line.
+if its your first time running the code make sure all load flags are set to 0 or an error will occur because there is no mat files in 'mat files' folder.
+the 'mat files' folder contains all the mat files saved when the script is executed.
+if you wish to load mat files and save computation time make sure you have run the script befor with all save flags set to 1, only then you can change the load flags to 1 for the next script execution.
+the variable 'files_filepath' determies the path of the xlsx files to train and evaluate the model, so change it to where all the xlsx files are (full or relative path).
+
+the use of 'main' function is the same as instructed, the only input is the files path.
 
