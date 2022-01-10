@@ -2,9 +2,11 @@ clc; clear all; close all;
 % this is the main script for our workflow
 
 % set some usefull flags
-flag_load_data = 0;         % 1 - data will be loaded from mat files, 0 - data will be extracted from xlsx files
-flag_save_data = 0;         % 1 - data will be saved, 0 - data wont be saved
-flag_load_feat = 0;         % 1 - features will be loaded from mat files, 0 - features will be extracted from data
+flag_load_data = 1;         % 1 - data will be loaded from mat files, 0 - data will be extracted from xlsx files
+flag_save_data = 1;         % 1 - data will be saved, 0 - data wont be saved
+flag_load_feat = 1;         % 1 - features will be loaded from mat files, 0 - features will be extracted from data
+flag_save_fest = 1;
+flag_load_SFS  = 1;
 
 % define our data paths
 files_filepath = 'BHQ files';
@@ -25,58 +27,86 @@ train_data = all_data(1:round(0.8*length(all_data)));
 test_data = all_data(round(0.8*length(all_data)) + 1:end);
 
 % extract features for train & test sets
-train_feat = feat_set(train_data);
-test_feat = feat_set(test_data);
+train_feat = feat_set(train_data, flag_load_feat, flag_save_fest, 'train feat');
+test_feat = feat_set(test_data, flag_load_feat, flag_save_fest, 'test feat');
 
 % feature selection process
 % correlations tests
-[~, ~, ~, ~,feature_removed_indices, ~, new_feat_names, ~,...
-    ~, feat_removed_nan_indices, new_weights, new_feat_feat_corr]...
-    = corr_analysis(train_feat, features_names, catg_feat);
-save('mat files/first features to remove ind', 'feat_removed_nan_indices');
-save('mat files/second features to remove ind', 'feature_removed_indices');
+[feat_feat_corr, weights, best_feat_label, features_removed_names, features_not_removed_idx,...
+    highest_corr_under_thresh, feat_names_nans] = corr_analysis(train_feat, features_names, catg_feat);
+
+save('mat files/logical features to remove', 'features_not_removed_idx');
+
+% remove features from train & test sets 
+features_names(~features_not_removed_idx) = [];
+train_feat(:,~features_not_removed_idx) = [];
+test_feat(:,~features_not_removed_idx) = [];
 
 %% SFS - ussing filter method with CFS criterion
-best_features = [];
-CFS = 0;
-while true
-    for i = 1:length(new_weights)
-        if ismember(i,best_features)
-            continue
-        end
-        curr_cfs = calculate_CFS(new_weights, new_feat_feat_corr, [best_features i]);
-        if curr_cfs > CFS
-            CFS = curr_cfs;
-            feat_to_add = i;
-        end
-    end
-    if ~exist('feat_to_add', 'var')
-        break
-    end
-    best_features = [best_features, feat_to_add];
-    clear feat_to_add
+if ~flag_load_SFS
+    N = 100; % num of trees
+    learners = templateTree("MaxNumSplits", 50, "MinLeafSize", 10, 'Reproducible', true); % basic trees
+    options_mdl = statset('UseParallel', true); % options for fitcensemble
+    
+    options_sfs = statset('Display', 'iter', 'UseParallel', true);  % UseParallel to speed up the computations and Display so we can see the progress
+    
+    % SFS- using loss function as criteria
+    fun = @(Xtrain,Ytrain,Xtest,Ytest)loss(fitcensemble(Xtrain, Ytrain, 'Method', 'Bag',...
+        'NumLearningCycles', N, 'Learners', learners, 'options', options_mdl), Xtest, Ytest);
+    
+    [Indx_sfs, history_sfs] = sequentialfs(fun, train_feat(:,1:end-1), train_feat(:,end), 'options', options_sfs);
+    save('mat files/SFS data','Indx_sfs', 'history_sfs')
+else
+    load('mat files/SFS data','Indx_sfs', 'history_sfs');
 end
 
-best_feat_names = new_feat_names(best_features);
-save('mat files/best features','best_features');
-% remove features from train & test sets - and take only the selected
-% best features
-train_feat(:,find(feat_removed_nan_indices)) = [];
-train_feat(:,feature_removed_indices) = [];
-
-test_feat(:,find(feat_removed_nan_indices)) = [];
-test_feat(:,feature_removed_indices) = [];
-
-train_feat = [train_feat(:,best_features), train_feat(:,end)];
-test_feat = [test_feat(:,best_features), test_feat(:,end)];
+best_feat_names = features_names(Indx_sfs);
+train_feat = [train_feat(:,Indx_sfs) train_feat(:,end)];
+test_feat = [test_feat(:,Indx_sfs), test_feat(:,end)];
 
 figure; % correlation matrix
-heatmap(abs(corr(train_feat(:,1:end-1), 'type', 'Spearman', 'rows', 'complete')));
-title('Feature Correlation after CFS- BHQ')
+heatmap(abs(feat_feat_corr));
+title('Feature Correlation after correlation filtering  - BHQ')
+
+figure; % correlation matrix
+beat_feat_feat_corr = feat_feat_corr(:,Indx_sfs);
+beat_feat_feat_corr = beat_feat_feat_corr(Indx_sfs,:);
+heatmap(abs(beat_feat_feat_corr));
+title('Feature Correlation after SFS - BHQ')
 
 figure; % gplot
 gplotmatrix(train_feat(:,1:end-1),[],train_feat(:,end));
 title('Gplot- BHQ');
+
+% %% SFS - filter method with CFS criterion #### we got better results with
+% wraper method ####
+% best_features = [];
+% CFS = 0;
+% while true
+%     for i = 1:length(weights)
+%         if ismember(i,best_features)
+%             continue
+%         end
+%         curr_cfs = calculate_CFS(weights, abs(feat_feat_corr), [best_features i]);
+%         if curr_cfs > CFS
+%             CFS = curr_cfs;
+%             feat_to_add = i;
+%         end
+%     end
+%     if ~exist('feat_to_add', 'var')
+%         break
+%     end
+%     best_features = [best_features, feat_to_add];
+%     clear feat_to_add
+% end
+% best_feat_names = features_names(best_features);
+% save('mat files/best features','best_features');
+% 
+% 
+% train_feat = [train_feat(:,best_features), train_feat(:,end)];
+% test_feat = [test_feat(:,best_features), test_feat(:,end)];
+
+
 
 %% classifier - linear discriminant
 disc_MDL = fitcdiscr(train_feat(:,1:end-1), train_feat(:,end), 'DiscrimType', 'linear', ...
