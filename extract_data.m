@@ -1,4 +1,4 @@
-function all_data = extract_data(files_filepath, data_filepath, flag_load)
+function all_data = extract_data(files_filepath, data_filepath, flag_load, flag_save)
 % this function reads xlsx files and return them as a data structure.
 % inputs:
 %       - files_filepath: the relative path to the xlsx files
@@ -91,6 +91,8 @@ for i = 3:length(listing)
     all_data{i - 2,1} = curr_struct;
 end
 all_data = all_data(~cellfun('isempty',all_data));      % remove empty cells
-save(strcat(data_filepath,'/','all_data'), 'all_data'); % save the data as a mat file
+if flag_save
+    save(strcat(data_filepath,'/','all_data'), 'all_data'); % save the data as a mat file
+end
 warning ('on','MATLAB:table:ModifiedAndSavedVarnames');
 end

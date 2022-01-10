@@ -1,8 +1,4 @@
-function feat_mat = feat_extract_norm(struct, call_norm_func)
-
-% if call_norm_func
-%     [means, stds] = norm_factors(struct);
-% end
+function feat_mat = feat_extract_norm(struct)
 
 fields = string(fieldnames(struct));
 feat_mat = [];
@@ -43,16 +39,20 @@ for j = 2:length(fields)
     if isempty(wifi) %|| length(unique(wifi{:,1})) < 30
         wifi_sum = nan;
         no_wifi = nan;
+        wifi_samp = 0;
     else
         wifi_sum = size(unique(wifi(~strcmp(wifi{:,2}, 'Not found'),2)),1); % num of wifi found that day
         no_wifi = sum(~strcmp(wifi{:,2}, 'Not found'));
+        wifi_samp = length(unique(wifi{:,1}));
     end
 
     % bluetooth
     if isempty(bluetooth) %|| length(unique(bluetooth{:,1})) < 30
         bluetooth_sum = nan;
+        bluetooth_samp = 0;
     else   
         bluetooth_sum = size(bluetooth,1);  % num of BT devices found that day
+        bluetooth_samp = length(unique(bluetooth{:,1}));
     end
 
     % screen
@@ -80,7 +80,9 @@ for j = 2:length(fields)
         battery_end = nan;
         battery_mid = nan;
         first_charge_time = nan;
+        battery_samp = 0;
     else
+        battery_samp = length(unique(battery{:,1}));
         battery_start = str2double(battery{1,2});                  % battery % at start of the day
         battery_end = str2double(battery{end,2});                  % battery % at end of the day
         battery_mid = str2double(battery{round((size(battery,1))/2),2}); % battery % at mid of day
@@ -123,37 +125,44 @@ for j = 2:length(fields)
     if isempty(on_foot)
         on_foot = 0;
     end
+    activity_samp = length(unique(activity{:,1}));
 
     % location
     if isempty(location) %|| length(unique(location{:,1})) < 30
         location_sum = nan;
         location_max = nan;
         location_max_time = nan;
+        location_samp = 0;
     else
         location_sum = sum(str2double(location{:,2})); % sum of movement in a day
         [M,I] = max(str2double(location{:,3}));
         location_max = M;                       % max movement
         location_max_time = location{I,1};      % max movement time
+        location_samp = length(unique(location{:,1}));
     end
 
     % light
     if isempty(light) %|| length(unique(light{:,1})) < 30
-        light_sum = 0;
+        light_sum = nan;
+        light_samp = 0;
     else
         func = @(x)str2double(x);
         table_values = varfun(func,light(:,2));
         light_sum = sum(table_values{:,1});
+        light_samp = length(unique(light{:,1}));
     end
 
    
-    feat_vec = [wifi_sum no_wifi bluetooth_sum on_off_switches battery_start...
-    battery_mid battery_end first_charge_time calls_num calls_sum...
-    calls_max calls_max_time in_vehicle on_foot tilting location_sum...
-    location_max location_max_time sleep_time wake_time sleep_duration light_sum load_var_norm label];
+    feat_vec = [wifi_sum, no_wifi, bluetooth_sum, on_off_switches, battery_start,...
+    battery_mid, battery_end, first_charge_time, calls_num calls_sum,...
+    calls_max, calls_max_time, in_vehicle, on_foot, tilting, location_sum,...
+    location_max, location_max_time, sleep_time, wake_time, sleep_duration, light_sum, load_var_norm,...
+    wifi_samp, bluetooth_samp, battery_samp, activity_samp, location_samp, light_samp, label];
 
     feat_mat = cat(1,feat_mat,feat_vec);
 end
 
+% normalize the data
 for i = 1:(length(feat_vec) - 1)
     not_nan_idx = find(~isnan(feat_mat(:,i)));
     L = length(not_nan_idx);
@@ -177,9 +186,7 @@ for i = 1:(length(feat_vec) - 1)
     feat_mat(feat_mat == inf) = 100;
 end
 
-% if call_norm_func
-%     feat_mat(:, 1:end-1) = (feat_mat(:, 1:end-1) - means)./stds;
-% end
+
 end
 
 

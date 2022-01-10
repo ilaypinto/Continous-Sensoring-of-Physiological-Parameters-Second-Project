@@ -30,21 +30,21 @@ test_feat = feat_set(test_data);
 
 % feature selection process
 % correlations tests
-[~, ~, ~, ~,feature_removed_indices, ~, new_feat_names, ~,...
-    ~, feat_removed_nan_indices, new_weights, new_feat_feat_corr]...
-    = corr_analysis(train_feat, features_names, catg_feat);
-save('mat files/first features to remove ind', 'feat_removed_nan_indices');
-save('mat files/second features to remove ind', 'feature_removed_indices');
+[feat_feat_corr, weights, best_feat_label, features_removed_names, features_removed_idx,...
+    highest_corr_under_thresh, feat_names_nans] = new_corr_analysis(train_feat, features_names, catg_feat);
+
+save('mat files/logical features to remove', 'features_removed_idx');
+
 
 %% SFS - ussing filter method with CFS criterion
 best_features = [];
 CFS = 0;
 while true
-    for i = 1:length(new_weights)
+    for i = 1:length(weights)
         if ismember(i,best_features)
             continue
         end
-        curr_cfs = calculate_CFS(new_weights, new_feat_feat_corr, [best_features i]);
+        curr_cfs = calculate_CFS(weights, abs(feat_feat_corr), [best_features i]);
         if curr_cfs > CFS
             CFS = curr_cfs;
             feat_to_add = i;
@@ -56,16 +56,14 @@ while true
     best_features = [best_features, feat_to_add];
     clear feat_to_add
 end
-
-best_feat_names = new_feat_names(best_features);
+features_names = features_names(~features_removed_idx);
+best_feat_names = features_names(best_features);
 save('mat files/best features','best_features');
+
 % remove features from train & test sets - and take only the selected
 % best features
-train_feat(:,find(feat_removed_nan_indices)) = [];
-train_feat(:,feature_removed_indices) = [];
-
-test_feat(:,find(feat_removed_nan_indices)) = [];
-test_feat(:,feature_removed_indices) = [];
+train_feat(:,features_removed_idx) = [];
+test_feat(:,features_removed_idx) = [];
 
 train_feat = [train_feat(:,best_features), train_feat(:,end)];
 test_feat = [test_feat(:,best_features), test_feat(:,end)];

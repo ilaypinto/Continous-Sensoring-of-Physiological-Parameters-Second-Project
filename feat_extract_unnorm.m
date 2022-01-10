@@ -8,7 +8,6 @@ for j = 2:length(fields)
     % extract data from structure
     load_var = struct.(fields(j,:)).load;
     activities = struct.(fields(j,:)).activities;
-
     
    % check the person activities of the day - binary features
    if iscell(activities)
@@ -21,7 +20,7 @@ for j = 2:length(fields)
        family_time = 0;
        day_hangout = 0;
        for i = 1:length(activity)
-           if strcmp(activity{i},'עבודה\מחקר') | strcmp(activity{i},'עבודה/מחקר')
+           if strcmp(activity{i},'עבודה\מחקר') || strcmp(activity{i},'עבודה/מחקר')
                working_day = 1;
 
            elseif strcmp(activity{i},'ספורט')

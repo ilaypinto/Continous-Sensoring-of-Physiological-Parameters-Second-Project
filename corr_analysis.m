@@ -1,6 +1,6 @@
 function [feat_feat_corr, weights, best_feat_label, features_removed_names,...
     feature_removed_indices, new_feat_matrix, new_feat_names, highest_corr_under_thresh,...
-    feat_names_too_many_nan, feat_removed_nan_indices]...
+    feat_names_too_many_nan, feat_removed_nan_indices, new_weights, new_feat_feat_corr]...
     = corr_analysis(feat_label_mat, feat_names)
 % this function computes correlations between features and relieff between fetures and labels.
 
@@ -66,4 +66,7 @@ highest_corr_under_thresh{2} = I;            % use this value to check for corre
 highest_corr_under_thresh{3} = feat_names{I_cols};
 highest_corr_under_thresh{4} = feat_names{I_rows};
 
+new_weights = weights;
+new_weights(feature_removed_indices) = [];
+new_feat_feat_corr = corr(new_feat_matrix(:,1:end-1), 'type', 'Spearman', 'rows', 'complete');
 end
