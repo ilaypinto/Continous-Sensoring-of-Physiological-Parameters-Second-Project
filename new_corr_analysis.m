@@ -1,122 +1,44 @@
 function [feat_feat_corr, weights, best_feat_label, features_removed_names,...
-    features_removed_idx, highest_corr_under_thresh, feat_names_nans]...
-    = new_corr_analysis(feat_label_mat, feat_names, categorical)
+    feature_removed_indices, new_feat_matrix, new_feat_names, highest_corr_under_thresh,...
+    feat_names_too_many_nan, feat_removed_nan_indices, new_weights, new_feat_feat_corr]...
+    = new_corr_analysis(feat_label_mat, feat_names)
 % this function computes correlations between features and relieff between fetures and labels.
 
-all_names = feat_names;
+k = 7;     % num of neighbors for relieff
 
 % Slice the data to features and labels
-label_vec = feat_label_mat(:,end);         % Separate the Labels from matrix
+label_vec = feat_label_mat(:, end);         % Separate the Labels from matrix
 feat_mat = feat_label_mat(:, 1:end - 1);    % Separate Features from labels
 
-% define new feature matrix for categorial and numeric features
-catg_feat_mat = feat_mat(:,categorical); % categorial features
-num_feat_mat = feat_mat;
-num_feat_mat(:,categorical) = []; % numeric features
+nan_feat_idx  = sum(isnan(feat_mat),1);
+feat_names_too_many_nan = feat_names(nan_feat_idx > size(feat_mat,1)*0.15);
+feat_removed_nan_indices = (nan_feat_idx > size(feat_mat,1)*0.15);
+feat_names(nan_feat_idx > size(feat_mat,1)*0.15) = [];
+new_feat_mat = feat_mat(:,nan_feat_idx < size(feat_mat,1)*0.15);
 
-% define names of num and catg features
-names_catg = feat_names(categorical);
-names_num = feat_names;
-names_num(categorical) = [];
+nan_exmpl_idx = sum(isnan(new_feat_mat),2);
 
-%% reject features with too many nans
-% categorial
-nan_feat_idx  = sum(isnan(catg_feat_mat),1);
-reject = nan_feat_idx > size(catg_feat_mat,1)*0.15;
-catg_feat_mat = catg_feat_mat(:,~reject);
-feat_names_nans_catg = names_catg(reject);
-names_catg(reject) = [];
-
-% numeric
-nan_feat_idx  = sum(isnan(num_feat_mat),1);
-reject = nan_feat_idx > size(num_feat_mat,1)*0.15;
-num_feat_mat = num_feat_mat(:,~reject);
-feat_names_nans_num = names_num(reject);
-names_num(reject) = [];
-
-feat_names_nans = [feat_names_nans_num, feat_names_nans_catg];
-
-
-%% Compute feat label corr
-nan_exmpl_idx_num = logical(sum(isnan(num_feat_mat),2)); % find examples with nans values
-nan_exmpl_idx_catg = logical(sum(isnan(catg_feat_mat),2)); % find examples with nans values
-
-k = 7;     % num of neighbors for relieff
-[~, weights_num] = relieff(num_feat_mat(~nan_exmpl_idx_num,:), label_vec(~nan_exmpl_idx_num,:), k, 'method', 'classification');   % Features-Labels correlation for numeric
-[~, weights_catg] = relieff(catg_feat_mat(~nan_exmpl_idx_catg,:), label_vec(~nan_exmpl_idx_catg,:), k, 'method', 'classification','categoricalx', 'on');   % Features-Labels correlation for categorial
-weights = [weights_num, weights_catg];
-weights_sorted = sort([weights_num, weights_catg], "descend");
-idx_1_num = weights_num == weights_sorted(1);
-idx_1_catg = weights_catg == weights_sorted(1);
-idx_2_num = weights_num == weights_sorted(2);
-idx_2_catg = weights_catg == weights_sorted(2);
-name_1 = [names_catg(idx_1_catg), names_num(idx_1_num)];
-name_2 = [names_catg(idx_2_catg), names_num(idx_2_num)];
-
-% extract the two features with highest feature label correlation
-best_feat_label{1} = [weights_sorted(1), weights_sorted(2)];    % value of relieff
-best_feat_label{2} = {name_1, name_2};            % feature name
-
+% Compute feat label corr
+[idx_relieff, weights] = relieff(new_feat_mat(nan_exmpl_idx == 0,:), label_vec(nan_exmpl_idx == 0,:), k, 'method', 'classification');   % Features-Labels correlation for all feat
 
 % Compute feat feat corr
-number_feat = size(num_feat_mat,2) + size(catg_feat_mat,2);
-feat_names = [names_num; names_catg]; % all features names
-feat_mat = [num_feat_mat catg_feat_mat]; % all features matrix
-feat_feat_corr = ones(number_feat);
+feat_feat_corr = corr(new_feat_mat, 'type', 'Spearman', 'rows', 'complete');                 % Features-Features correlation
 
-% numeric - numeric corr
-feat_feat_corr(1:length(names_num), 1:length(names_num)) = corr(num_feat_mat, 'type', 'Spearman', 'rows', 'complete');  % Features-Features correlation
-L = size(num_feat_mat,2);
-U = size(catg_feat_mat,2);
-% numeric - categorial corr
-for i = 1:L
-    for j = 1:U
-        feat_feat_corr(i,L + j) = corr(num_feat_mat(:,i), catg_feat_mat(:,j), 'type', 'Pearson', 'rows', 'complete');
-        feat_feat_corr(j + L,i) = feat_feat_corr(i,L + j);
-    end
-end
-
-% categorial - categorial corr
-for i = 1:U
-    for j = 1:U
-        if i == j 
-            continue
-        elseif feat_feat_corr(j + L,i + L) ~= 1 || feat_feat_corr(i + L, j + L) ~= 1
-            continue
-        end
-        cg1 = catg_feat_mat(:,i);
-        cg2 = catg_feat_mat(:,j);
-        nan_idx = (isnan(cg1) | isnan(cg2)); % remove examples with nans
-        cg1(nan_idx) = [];
-        cg2(nan_idx) = [];
-        TT = sum((cg1 == 1) & (cg2 == 1));
-        TF = sum((cg1 == 1) & (cg2 == 0));
-        FT = sum((cg1 == 0) & (cg2 == 1));
-        FF = sum((cg1 == 0) & (cg2 == 0));
-        mat = [TT, FT; TF, FF];
-        stats = mestab(mat);
-        feat_feat_corr(j + L,i + L) = stats.phi;
-        feat_feat_corr(i + L, j + L) = stats.phi;
-    end
-end
-figure;
-heatmap(abs(feat_feat_corr)); %##### remove later ######
-
-% find max feature-feature correlation under 0.7 and their names
-[M, I] = max(feat_feat_corr(abs(feat_feat_corr) < 0.7));
-[row,col] = ind2sub(size(feat_feat_corr), I);
-highest_corr_under_thresh = cell(1,2);
-highest_corr_under_thresh{1} = M;
-highest_corr_under_thresh{2} = {feat_names{col}, feat_names{row}};
+% extract the feature with highest feature label correlation
+best_feat_label{1} = [weights(idx_relieff(1)), weights(idx_relieff(2))];    % value of relieff
+best_feat_label{2} = [idx_relieff(1), idx_relieff(2)];                              % index of feature in matrix
+best_feat_label{3} = feat_names([idx_relieff(1), idx_relieff(2)]);                  % feature name
 
 % find and remove features with over 0.7 feature-feature correlation
 indices = find(and(abs(feat_feat_corr) >= 0.7, abs(feat_feat_corr) ~= 1) );
-[row,col] = ind2sub(size(feat_feat_corr),indices);
-feature_removed_indices = zeros(1,length(indices)); % alocate memory
+indices_cols = ceil(indices./size(feat_feat_corr, 1));
+indices_rows = mod(indices, size(feat_feat_corr, 1));
+indices_rows(indices_rows == 0) = size(feat_feat_corr, 1);
+feature_removed_indices = zeros(1,length(indices));
 
 for i = 1:length(indices)
-    feat_1 = col(i);
-    feat_2 = row(i);
+    feat_1 = indices_cols(i);
+    feat_2 = indices_rows(i);
     if weights(feat_1) > weights(feat_2)
         worst_feat = feat_2;
     else
@@ -127,15 +49,24 @@ end
 feature_removed_indices = unique(feature_removed_indices);
 features_removed_names = feat_names(feature_removed_indices);
 
-feat_mat(:,feature_removed_indices) = []; % remove features
-feat_mat = [feat_mat, label_vec]; % add labels to feature matrix
-feat_names(feature_removed_indices) = []; % remove feature names
+vec = ones(1,size(new_feat_mat, 2));
+vec(1,feature_removed_indices) = 0;
+new_feat_matrix = new_feat_mat(:, vec == 1);
+new_feat_names = feat_names(vec == 1);
+new_feat_matrix = [new_feat_matrix, label_vec];
 
-% find the indices of initial features that remain
-features_removed_idx = ismember(all_names, feat_names);
+% find max feature-feature correlation under 0.7 and their names
+M = max(feat_feat_corr(abs(feat_feat_corr) < 0.7));
+I = find(abs(feat_feat_corr) == M, 1);
+I_cols = ceil(I/size(feat_feat_corr, 1));
+I_rows = mod(I, size(feat_feat_corr, 1));
+highest_corr_under_thresh = cell(1,4);
+highest_corr_under_thresh{1} = M;
+highest_corr_under_thresh{2} = I;            % use this value to check for correct names afterwards
+highest_corr_under_thresh{3} = feat_names{I_cols};
+highest_corr_under_thresh{4} = feat_names{I_rows};
 
-
-weights(feature_removed_indices) = [];
-feat_feat_corr(:,feature_removed_indices) = [];
-feat_feat_corr(feature_removed_indices,:) = [];
+new_weights = weights;
+new_weights(feature_removed_indices) = [];
+new_feat_feat_corr = corr(new_feat_matrix(:,1:end-1), 'type', 'Spearman', 'rows', 'complete');
 end

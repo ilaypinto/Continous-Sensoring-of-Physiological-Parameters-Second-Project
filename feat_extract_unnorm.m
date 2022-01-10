@@ -11,7 +11,7 @@ for j = 2:length(fields)
     
    % check the person activities of the day - binary features
    if iscell(activities)
-       activity = split(activities, ',');
+       activity = strip(split(activities, ','));
        working_day = 0;
        sport = 0;
        stayed_home = 0;
