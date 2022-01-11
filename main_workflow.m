@@ -10,15 +10,15 @@ flag_save_feat = 1;         % 1 - features will be saved to a mat files, 0 - fea
 flag_load_SFS  = 1;         % 1 - load SFS results, 0 - compute SFS
 
 % define our data paths
-files_filepath = 'BHQ files';
-mat_filepath = 'mat files';
+files_filepath = 'BHQ files'; % set this to the xlsx folder files path
+mat_filepath = 'mat files';   % set this to the path you want to save the mat files produced in the script
 
 % define our features names
 features_names = split('load_var working_day sport stayed_home late_hangout studying_day family_time day_hangout wifi_sum no_wifi bluetooth_sum on_off_switches battery_start battery_mid battery_end first_charge_time calls_num calls_sum calls_max calls_max_time in_vehicle on_foot tilting location_sum location_max location_max_time sleep_time wake_time sleep_duration light_sum load_var_norm wifi_samp bluetooth_samp battery_samp activity_samp location_samp light_samp');
 
 % define the categorical and numerical features indices
-catg_feat = (2:8);
-num_feat = [1, 9:37];
+catg_feat = (2:8);    % categorical features indices in the feature matrice
+num_feat = [1, 9:37]; % numerical features indices in the feature matrice
 
 % extract data from xlsx files
 all_data = extract_data(files_filepath, mat_filepath, flag_load_data, flag_save_data);
