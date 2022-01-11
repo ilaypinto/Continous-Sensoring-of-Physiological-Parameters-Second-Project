@@ -6,6 +6,8 @@ function all_data = extract_data(files_filepath, data_filepath, flag_load, flag_
 %                        extracted data
 %       - flag_load: specifies if you want to load a mat file as the data
 %                    (1) structure or extract data from xlsx files (0)
+%       - flag_save: specifies if you want to save the data that have been
+%                    extracted to a mat file (1) or not (0)
 %
 % outputs:
 %       - all_data: a cell containing the data structures. each cell is a

@@ -1,12 +1,13 @@
 clc; clear all; close all;
-% this is the main script for our workflow
+% this is the main script for our workflow - see the readme file for
+% instructions
 
 % set some usefull flags
 flag_load_data = 1;         % 1 - data will be loaded from mat files, 0 - data will be extracted from xlsx files
 flag_save_data = 1;         % 1 - data will be saved, 0 - data wont be saved
 flag_load_feat = 1;         % 1 - features will be loaded from mat files, 0 - features will be extracted from data
-flag_save_fest = 1;
-flag_load_SFS  = 1;
+flag_save_feat = 1;         % 1 - features will be saved to a mat files, 0 - features will not be saved
+flag_load_SFS  = 1;         % 1 - load SFS results, 0 - compute SFS
 
 % define our data paths
 files_filepath = 'BHQ files';
@@ -27,10 +28,10 @@ train_data = all_data(1:round(0.8*length(all_data)));
 test_data = all_data(round(0.8*length(all_data)) + 1:end);
 
 % extract features for train & test sets
-train_feat = feat_set(train_data, flag_load_feat, flag_save_fest, 'train feat');
-test_feat = feat_set(test_data, flag_load_feat, flag_save_fest, 'test feat');
+train_feat = feat_set(train_data, flag_load_feat, flag_save_feat, 'train feat');
+test_feat = feat_set(test_data, flag_load_feat, flag_save_feat, 'test feat');
 
-% feature selection process
+%% feature selection process
 % correlations tests
 [feat_feat_corr, weights, best_feat_label, features_removed_names, features_not_removed_idx,...
     highest_corr_under_thresh, feat_names_nans] = corr_analysis(train_feat, features_names, catg_feat);
@@ -42,11 +43,11 @@ features_names(~features_not_removed_idx) = [];
 train_feat(:,~features_not_removed_idx) = [];
 test_feat(:,~features_not_removed_idx) = [];
 
-%% SFS - ussing filter method with CFS criterion
+% SFS - ussing wraper method with loss criterion on random forest model
 if ~flag_load_SFS
-    N = 100; % num of trees
+    N = 30; % num of trees
     learners = templateTree("MaxNumSplits", 50, "MinLeafSize", 10, 'Reproducible', true); % basic trees
-    options_mdl = statset('UseParallel', true); % options for fitcensemble
+    options_mdl = statset('UseParallel', true, 'UseSubstreams', true, 'Streams', RandStream('mlfg6331_64')); % options for fitcensemble
     
     options_sfs = statset('Display', 'iter', 'UseParallel', true);  % UseParallel to speed up the computations and Display so we can see the progress
     
@@ -60,26 +61,27 @@ else
     load('mat files/SFS data','Indx_sfs', 'history_sfs');
 end
 
+% keep only best features in the features matrix and get their names
 best_feat_names = features_names(Indx_sfs);
 train_feat = [train_feat(:,Indx_sfs) train_feat(:,end)];
 test_feat = [test_feat(:,Indx_sfs), test_feat(:,end)];
 
-figure; % correlation matrix
+figure; % correlation matrix of features after corr filtering
 heatmap(abs(feat_feat_corr));
 title('Feature Correlation after correlation filtering  - BHQ')
 
-figure; % correlation matrix
+figure; % correlation matrix for the final features
 beat_feat_feat_corr = feat_feat_corr(:,Indx_sfs);
 beat_feat_feat_corr = beat_feat_feat_corr(Indx_sfs,:);
 heatmap(abs(beat_feat_feat_corr));
 title('Feature Correlation after SFS - BHQ')
 
-figure; % gplot
+figure; % gplot of the final features
 gplotmatrix(train_feat(:,1:end-1),[],train_feat(:,end));
 title('Gplot- BHQ');
 
 % %% SFS - filter method with CFS criterion #### we got better results with
-% wraper method ####
+% wraper method on RF model ####
 % best_features = [];
 % CFS = 0;
 % while true
@@ -108,7 +110,7 @@ title('Gplot- BHQ');
 
 
 
-%% classifier - linear discriminant
+%% first classifier - linear discriminant
 disc_MDL = fitcdiscr(train_feat(:,1:end-1), train_feat(:,end), 'DiscrimType', 'linear', ...
     'Gamma', 0, 'FillCoeffs', 'off', 'ClassNames', [0; 1]);
 
@@ -126,21 +128,24 @@ confusionchart(CM_test_ld, {'weekdays', 'weekends'});
 title('confusion matrix - linear discriminant: test set');
 
 
-%% classifier - Random forest
+%% second classifier - Random forest - this is the better model
 N = 100; % num of trees
 learners = templateTree("MaxNumSplits", 30, "MinLeafSize", 3, 'Reproducible', true); % basic trees
 options = statset('UseParallel', true, 'UseSubstreams', true, 'Streams', RandStream('mlfg6331_64')); % options for fitcensemble
+% define some optimizer values
 optimizer.MaxObjectiveEvaluations = 300; 
 optimizer.MaxTime = 60;
 optimizer.UseParallel = 1;
+% train the RF model and optimize it
 ensemble_MDL = fitcensemble(train_feat(:,1:end-1), train_feat(:,end), 'Method', 'Bag',...
     'NumLearningCycles', N, 'Learners', learners, 'options', options, 'ClassNames', [0 1],...
     'OptimizeHyperparameters',{'MinLeafSize', 'NumLearningCycles', 'MaxNumSplits','NumVariablesToSample','SplitCriterion'},...
-    'HyperparameterOptimizationOptions', optimizer); % RF model and its optimization
+    'HyperparameterOptimizationOptions', optimizer); 
 
-[prediction_train, scores] = predict(ensemble_MDL, train_feat(:,1:end-1)); % predictions
-prediction_test = predict(ensemble_MDL, test_feat(:,1:end-1)); % predictions
+[prediction_train, scores] = predict(ensemble_MDL, train_feat(:,1:end-1)); % predictions for train set
+prediction_test = predict(ensemble_MDL, test_feat(:,1:end-1)); % predictions for test set
 
+% plot the confusion matrix for test and train sets
 CM_train_RF = confusionmat(train_feat(:,end), prediction_train);
 figure;
 confusionchart(CM_train_RF, {'weekdays', 'weekends'});
@@ -184,7 +189,29 @@ figure;
 confusionchart(C, {'weekdays', 'weekends'});
 title('confusion matrix for a working point of ppv = 90%');
 
+%% train and optimize the model on all data
+all_feat = [train_feat; test_feat];
+N = 100; % num of trees
+learners = templateTree("MaxNumSplits", 30, "MinLeafSize", 3, 'Reproducible', true); % basic trees
+options = statset('UseParallel', true, 'UseSubstreams', true, 'Streams', RandStream('mlfg6331_64')); % options for fitcensemble
+% define optimizer values
+optimizer.MaxObjectiveEvaluations = 300; 
+optimizer.MaxTime = 60;
+optimizer.UseParallel = 1;
+% fit the RF    model
+ensemble_MDL_all = fitcensemble(all_feat(:,1:end-1), all_feat(:,end), 'Method', 'Bag',...
+    'NumLearningCycles', N, 'Learners', learners, 'options', options, 'ClassNames', [0 1],...
+    'OptimizeHyperparameters',{'MinLeafSize', 'NumLearningCycles', 'MaxNumSplits','NumVariablesToSample','SplitCriterion'},...
+    'HyperparameterOptimizationOptions', optimizer); % RF model and its optimization
+
+prediction_all = predict(ensemble_MDL_all, all_feat(:,1:end-1)); % predictions
+
+CM_all_RF = confusionmat(all_feat(:,end), prediction_all);
+figure;
+confusionchart(CM_all_RF, {'weekdays', 'weekends'});
+title('confusion matrix - Random Forest: all data');
+
 %% submitted files
-save('mat files/BestMDL', 'ensemble_MDL');
+save('mat files/BestMDL', 'ensemble_MDL_all');
 save('mat files/CM RF test', 'CM_test_RF' );
 
