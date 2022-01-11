@@ -1,7 +1,28 @@
 function [feat_feat_corr, weights, best_feat_label, features_removed_names,...
     features_not_removed_idx, highest_corr_under_thresh, feat_names_nans]...
     = corr_analysis(feat_label_mat, feat_names, categorical)
-% this function computes correlations between features and relieff between fetures and labels.
+% this function removes redundant features due to high correlations.
+%
+% Input:    - feat_label_mat - a matrice of features and labels, the labes are in the last column.
+%           - feat_names - a cell array of the features names corresponding
+%           to their location in the feat_label_mat.
+%           - categorical - an array of the catagorical features indices in feat_label_mat.
+%
+% Output:   - feat_feat_corr - a correlation matrix of the remaining features
+%           - weights - the weights computed by the relieff algorithm
+%           corresponding to the remaining features.
+%           - best_feat_label - a cell array containing information about
+%           the feature with the highest weight from the relieff algorithm.
+%           - features_removed_names - a cell array containing the names of
+%           the removed features 
+%           - features_not_removed_idx - a logical array containing 0 where
+%           there is a feature to remove and 1 where there is a feature to maintain
+%           - highest_corr_under_thresh - a cecll array containing
+%           information about the two features with highest correlation
+%           after removing the redundant features.
+%           - feat_names_nans - a cell array containing the names of
+%           removed features due to having more than 15% nan values.
+         
 
 all_names = feat_names;
 
