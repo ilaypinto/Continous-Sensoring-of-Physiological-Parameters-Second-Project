@@ -55,7 +55,7 @@ num_feat_mat = num_feat_mat(:,~reject);
 feat_names_nans_num = names_num(reject);
 names_num(reject) = [];
 
-feat_names_nans = [feat_names_nans_num, feat_names_nans_catg];
+feat_names_nans = [feat_names_nans_num; feat_names_nans_catg];
 
 
 %% Compute feat label corr

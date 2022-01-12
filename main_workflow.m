@@ -45,18 +45,17 @@ test_feat(:,~features_not_removed_idx) = [];
 
 % SFS - ussing wraper method with loss criterion on random forest model
 if ~flag_load_SFS
-    N = 30; % num of trees
-    learners = templateTree("MaxNumSplits", 50, "MinLeafSize", 10, 'Reproducible', true); % basic trees
+    rng default
+    N = 50; % num of trees
+    learners = templateTree("MaxNumSplits", 50, "MinLeafSize", 10, 'Reproducible', true, 'NumVariablesToSample', 'all'); % basic trees
     options_mdl = statset('UseParallel', true, 'UseSubstreams', true, 'Streams', RandStream('mlfg6331_64')); % options for fitcensemble
-    
-    options_sfs = statset('Display', 'iter', 'UseParallel', true);  % UseParallel to speed up the computations and Display so we can see the progress
-    
+    options_sfs = statset('Display', 'iter'); % display every iteration progress
     % SFS- using loss function as criteria
     fun = @(Xtrain,Ytrain,Xtest,Ytest)loss(fitcensemble(Xtrain, Ytrain, 'Method', 'Bag',...
         'NumLearningCycles', N, 'Learners', learners, 'options', options_mdl), Xtest, Ytest);
     
     [Indx_sfs, history_sfs] = sequentialfs(fun, train_feat(:,1:end-1), train_feat(:,end), 'options', options_sfs);
-    save('mat files/SFS data','Indx_sfs', 'history_sfs')
+    save('mat files/SFS data','Indx_sfs', 'history_sfs');
 else
     load('mat files/SFS data','Indx_sfs', 'history_sfs');
 end
